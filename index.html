@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penghitung Push-up Virtual</title>
+
+    <!-- Memuat library MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --dark-bg: #212529;
+            --light-text: #f8f9fa;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            background-color: var(--dark-bg);
+            color: var(--light-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .video-container {
+            position: relative;
+            width: 70%;
+            height: calc(100vh - 40px);
+            background: black;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #webcam {
+            display: none;
+            /* Video asli disembunyikan */
+        }
+
+        #output_canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            /* Cerminkan tampilan agar seperti cermin */
+        }
+
+        .dashboard {
+            width: 30%;
+            background-color: #2c3034;
+            padding: 30px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .dashboard h1 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .counter-box {
+            background-color: var(--dark-bg);
+            border: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+        }
+
+        #counter-label {
+            font-size: 1.2em;
+            color: #adb5bd;
+        }
+
+        #counter {
+            font-size: 6em;
+            font-weight: bold;
+            color: var(--light-text);
+        }
+
+        .info-box {
+            width: 100%;
+        }
+
+        .info-item {
+            background-color: #343a40;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-item .label {
+            font-size: 1.1em;
+            color: #adb5bd;
+        }
+
+        .info-item .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--warning-color);
+            transition: color 0.3s;
+        }
+
+        #stage.up {
+            color: var(--success-color);
+        }
+
+        #stage.down {
+            color: var(--danger-color);
+        }
+
+
+        .instructions {
+            margin-top: auto;
+            color: #6c757d;
+        }
+
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.5em;
+            text-align: center;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .video-container,
+            .dashboard {
+                width: 100%;
+                height: auto;
+            }
+
+            .video-container {
+                height: 60vh;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Area untuk menampilkan video dan pose -->
+        <div class="video-container">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="output_canvas"></canvas>
+            <div class="loader">Memuat model & kamera...</div>
+        </div>
+
+        <!-- Panel informasi dan penghitung -->
+        <div class="dashboard">
+            <h1>Pelatih Push-up</h1>
+            <div class="counter-box">
+                <div id="counter-label">REPETISI</div>
+                <div id="counter">0</div>
+            </div>
+            <div class="info-box">
+                <div class="info-item">
+                    <div class="label">STATUS</div>
+                    <div class="value" id="stage">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">UMPAN BALIK</div>
+                    <div class="value" id="feedback" style="font-size: 1.5em; color: var(--light-text);">-</div>
+                </div>
+                <!-- PERUBAHAN: Menambahkan tampilan FPS -->
+                <div class="info-item">
+                    <div class="label">FPS</div>
+                    <div class="value" id="fps" style="font-size: 1.8em; color: var(--light-text);">-</div>
+                </div>
+            </div>
+            <div class="instructions">
+                <p>Posisikan tubuh Anda dari samping agar bahu, siku, dan pergelangan tangan terlihat jelas.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const loader = document.querySelector('.loader');
+
+        const counterEl = document.getElementById('counter');
+        const stageEl = document.getElementById('stage');
+        const feedbackEl = document.getElementById('feedback');
+        const counterBoxEl = document.querySelector('.counter-box');
+        const fpsEl = document.getElementById('fps'); // Elemen FPS
+
+        let counter = 0;
+        let stage = 'up';
+        let feedback = '-';
+        let visibilityThreshold = 0.7;
+        let lastTime = 0; // Untuk kalkulasi FPS
+
+        function calculateAngle(a, b, c) {
+            const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+            if (angle > 180.0) {
+                angle = 360 - angle;
+            }
+            return angle;
+        }
+
+        function onResults(results) {
+            const now = performance.now();
+            if (lastTime > 0) {
+                const fps = 1000 / (now - lastTime);
+                fpsEl.innerText = Math.round(fps);
+            }
+            lastTime = now;
+
+            if (!results.poseLandmarks) {
+                loader.style.display = 'block';
+                loader.innerText = "Posisikan tubuh Anda di depan kamera.";
+                return;
+            }
+            loader.style.display = 'none';
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            const landmarks = results.poseLandmarks;
+
+            try {
+                const leftShoulder = landmarks[POSE_LANDMARKS.LEFT_SHOULDER];
+                const rightShoulder = landmarks[POSE_LANDMARKS.RIGHT_SHOULDER];
+
+                let shoulder, elbow, wrist, hip;
+
+                if (leftShoulder.visibility > rightShoulder.visibility) {
+                    shoulder = landmarks[POSE_LANDMARKS.LEFT_SHOULDER];
+                    elbow = landmarks[POSE_LANDMARKS.LEFT_ELBOW];
+                    wrist = landmarks[POSE_LANDMARKS.LEFT_WRIST];
+                    hip = landmarks[POSE_LANDMARKS.LEFT_HIP];
+                } else {
+                    shoulder = landmarks[POSE_LANDMARKS.RIGHT_SHOULDER];
+                    elbow = landmarks[POSE_LANDMARKS.RIGHT_ELBOW];
+                    wrist = landmarks[POSE_LANDMARKS.RIGHT_WRIST];
+                    hip = landmarks[POSE_LANDMARKS.RIGHT_HIP];
+                }
+
+                if (shoulder.visibility > visibilityThreshold && elbow.visibility > visibilityThreshold && wrist.visibility > visibilityThreshold && hip.visibility > visibilityThreshold) {
+                    const elbowAngle = calculateAngle(shoulder, elbow, wrist);
+                    const shoulderAngle = calculateAngle(hip, shoulder, elbow);
+
+                    if (elbowAngle > 160 && shoulderAngle > 40) {
+                        stage = 'up';
+                        feedback = 'Turun';
+                        counterBoxEl.style.borderColor = 'var(--primary-color)';
+                    }
+                    if (elbowAngle < 90 && stage === 'up') {
+                        stage = 'down';
+                        feedback = 'Naik';
+                        counterBoxEl.style.borderColor = 'var(--success-color)';
+                    }
+                    if (elbowAngle > 160 && stage === 'down') {
+                        counter++;
+                        feedback = 'Bagus!';
+                        stage = 'up';
+                    }
+
+                    stageEl.className = stage;
+                    stageEl.innerText = stage.toUpperCase();
+                    counterEl.innerText = counter;
+                    feedbackEl.innerText = feedback;
+
+                } else {
+                    feedbackEl.innerText = "Pastikan tubuh terlihat dari samping";
+                }
+
+            } catch (error) {
+                console.error("Error saat memproses landmark:", error);
+                feedbackEl.innerText = "Terjadi kesalahan";
+            }
+
+            drawConnectors(canvasCtx, landmarks, POSE_CONNECTIONS, { color: '#0d6efd', lineWidth: 4 });
+            drawLandmarks(canvasCtx, landmarks, { color: '#ffc107', radius: 4 });
+
+            canvasCtx.restore();
+        }
+
+        const pose = new window.Pose({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+        });
+
+        pose.setOptions({
+            // PERUBAHAN: Menggunakan model yang lebih ringan
+            modelComplexity: 0,
+            smoothLandmarks: true,
+            enableSegmentation: false,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+
+        pose.onResults(onResults);
+
+        const camera = new window.Camera(videoElement, {
+            onFrame: async () => {
+                await pose.send({ image: videoElement });
+            },
+            // PERUBAHAN: Menggunakan resolusi yang lebih rendah untuk performa lebih baik
+            width: 640,
+            height: 480,
+        });
+
+        camera.start();
+
+    </script>
+</body>
+
+</html>
