@@ -420,7 +420,7 @@
                         <span>Sensitivitas Mata</span>
                         <span class="control-value" id="ear-threshold-value">0.50</span>
                     </div>
-                    <input type="range" id="ear-threshold" class="slider" min="0.15" max="0.50" step="0.01"
+                    <input type="range" id="ear-threshold" class="slider" min="0.15" max="0.40" step="0.01"
                         value="0.50">
                 </div>
                 <div class="control-group">
@@ -571,26 +571,42 @@
             }
 
             initializeCamera() {
+                // --- SOLUSI: Tentukan resolusi kamera berdasarkan lebar layar ---
+                const isMobile = window.innerWidth <= 768;
+                const cameraConfig = {
+                    width: isMobile ? 640 : 1280,  // Gunakan 640px jika mobile
+                    height: isMobile ? 480 : 720   // Gunakan 480px jika mobile
+                };
+
+                // Pesan ini akan muncul di konsol (F12) untuk memastikan resolusi yang benar digunakan
+                console.log(`Mode Mobile: ${isMobile}. Menggunakan resolusi kamera: ${cameraConfig.width}x${cameraConfig.height}`);
+
                 this.videoElement = document.getElementById('webcam');
                 this.canvasElement = document.getElementById('output_canvas');
                 this.canvasCtx = this.canvasElement.getContext('2d');
+
                 this.faceMesh = new window.FaceMesh({
                     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
                 });
+
                 this.faceMesh.setOptions({
                     maxNumFaces: 1,
                     refineLandmarks: true,
                     minDetectionConfidence: 0.5,
                     minTrackingConfidence: 0.5
                 });
+
                 this.faceMesh.onResults((results) => this.processResults(results));
+
                 this.camera = new window.Camera(this.videoElement, {
                     onFrame: async () => {
                         await this.faceMesh.send({ image: this.videoElement });
                     },
-                    width: 1280,
-                    height: 720
+                    // --- Gunakan config resolusi dinamis yang sudah kita tentukan ---
+                    width: cameraConfig.width,
+                    height: cameraConfig.height
                 });
+
                 this.camera.start();
             }
 
