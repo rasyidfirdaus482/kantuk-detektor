@@ -52,7 +52,6 @@
             width: 100%;
             max-width: 1400px;
             height: 90vh;
-            /* Tinggi utama untuk desktop */
             min-height: 600px;
         }
 
@@ -64,7 +63,6 @@
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
-            /* Menggunakan flex untuk memusatkan start-screen */
             align-items: center;
             justify-content: center;
         }
@@ -75,7 +73,6 @@
 
         #output_canvas {
             position: absolute;
-            /* Diposisikan absolut agar tidak mengganggu layout */
             top: 0;
             left: 0;
             width: 100%;
@@ -117,17 +114,26 @@
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.1);
             overflow-y: auto;
-            /* Memungkinkan scroll jika konten lebih tinggi */
         }
 
         .status-card {
-            padding: 2rem;
+            padding: 0.5rem;
             border-radius: 12px;
             text-align: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 2px solid transparent;
             position: relative;
+
             overflow: hidden;
+
+
+            display: flex;
+            flex-direction: column;
+
+            justify-content: space-around;
+
+
+            align-items: center;
         }
 
         .status-card::before {
@@ -158,14 +164,14 @@
         }
 
         .status-icon {
-            font-size: 4rem;
+            font-size: 2rem;
             margin-bottom: 1rem;
             display: block;
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
         }
 
         .status-text {
-            font-size: 1.5rem;
+            font-size: 1rem;
             font-weight: 700;
             margin-bottom: 1rem;
             text-transform: uppercase;
@@ -284,10 +290,8 @@
             box-shadow: none;
         }
 
-        /* --- PERUBAHAN PADA LOADER/START SCREEN --- */
         .loader {
             position: relative;
-            /* Diubah dari absolute */
             z-index: 20;
             text-align: center;
             color: white;
@@ -303,53 +307,36 @@
             font-weight: 500;
         }
 
-        /* --- PERBAIKAN RESPONSIVE DI SINI --- */
-
-        /* Untuk Tablet dan HP Landscape (Layar Sedang) */
+        /* Aturan Media Query yang Disempurnakan */
         @media (max-width: 1024px) {
-            .container {
-                /* Mengubah layout menjadi 1 kolom, video di atas, dashboard di bawah */
-                grid-template-columns: 1fr;
-                grid-template-rows: auto 1fr;
-                /* Baris video auto, dashboard mengisi sisa */
-                height: auto;
-                /* Tinggi tidak lagi dipaksa */
-                min-height: 100vh;
-                padding: 1rem;
-            }
-
-            .dashboard {
-                padding: 1.5rem;
-                min-height: 300px;
-                /* Beri tinggi minimum agar tidak terlalu gepeng */
-            }
-        }
-
-        /* Untuk HP Potrait (Layar Kecil) */
-        @media (max-width: 768px) {
             body {
                 padding: 0.5rem;
-                /* Kurangi padding di layar sangat kecil */
             }
 
             .container {
-                gap: 1rem;
-                /* Menggunakan Flexbox untuk kontrol yang lebih baik di mobile */
                 display: flex;
                 flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+                gap: 1rem;
             }
 
             .video-section {
-                /* KUNCI UTAMA: Memaksa rasio aspek agar video tidak gepeng */
-                aspect-ratio: 4 / 4;
                 width: 100%;
+                /* KUNCI UTAMA: Memaksa rasio aspek agar video tidak gepeng */
+                aspect-ratio: 4 / 3;
                 min-height: 0;
-                /* Override min-height dari .container */
             }
 
             .dashboard {
                 flex-shrink: 0;
-                /* Mencegah dashboard menyusut */
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .status-card {
+                padding: 1.5rem;
             }
 
             .status-icon {
@@ -362,21 +349,7 @@
 
             .metrics {
                 grid-template-columns: 1fr;
-                /* Metrik menjadi 1 kolom */
             }
-        }
-
-        /* Keyframes tidak perlu diubah */
-        @keyframes spin {
-            /* ... */
-        }
-
-        @keyframes pulse-glow {
-            /* ... */
-        }
-
-        @keyframes pulse-bg {
-            /* ... */
         }
     </style>
 </head>
@@ -418,10 +391,10 @@
                 <div class="control-group">
                     <div class="control-label">
                         <span>Sensitivitas Mata</span>
-                        <span class="control-value" id="ear-threshold-value">0.50</span>
+                        <span class="control-value" id="ear-threshold-value">0.40</span>
                     </div>
-                    <input type="range" id="ear-threshold" class="slider" min="0.15" max="0.40" step="0.01"
-                        value="0.50">
+                    <input type="range" id="ear-threshold" class="slider" min="0.15" max="0.50" step="0.01"
+                        value="0.40">
                 </div>
                 <div class="control-group">
                     <div class="control-label">
@@ -433,9 +406,9 @@
                 <div class="control-group">
                     <div class="control-label">
                         <span>Sensitivitas Menguap</span>
-                        <span class="control-value" id="yawn-threshold-value">0.6</span>
+                        <span class="control-value" id="yawn-threshold-value">0.8</span>
                     </div>
-                    <input type="range" id="yawn-threshold" class="slider" min="0.4" max="0.9" step="0.05" value="0.6">
+                    <input type="range" id="yawn-threshold" class="slider" min="0.4" max="0.9" step="0.05" value="0.8">
                 </div>
                 <div class="control-group">
                     <label for="alarm-file-input" class="control-label">
