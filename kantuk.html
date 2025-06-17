@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detektor Kantuk - Optimized</title>
+
+    <!-- MediaPipe and Tone.js libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <style>
+        :root {
+            --safe-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --light-text: #f1f5f9;
+            --accent: #3b82f6;
+            --border-radius: 16px;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #1e293b 100%);
+            color: var(--light-text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1400px;
+            height: 90vh;
+            min-height: 600px;
+        }
+
+        .video-section {
+            position: relative;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #webcam {
+            display: none;
+        }
+
+        #output_canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            background: #000;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .fps-counter {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-card {
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.1;
+            transition: opacity 0.3s ease;
+        }
+
+        .status-card.safe {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border-color: var(--safe-color);
+        }
+
+        .status-card.danger {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%);
+            border-color: var(--danger-color);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .status-card.danger::before {
+            opacity: 0.2;
+            animation: pulse-bg 2s infinite;
+        }
+
+        .status-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .controls-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .controls-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .control-value {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #334155;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
+        }
+
+        .audio-button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent) 0%, #1e40af 100%);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .audio-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .audio-button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 20;
+        }
+
+        .loader-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: spin 2s linear infinite;
+        }
+
+        .loader-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            from {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+            }
+        }
+
+        @keyframes pulse-bg {
+
+            0%,
+            100% {
+                opacity: 0.1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 2fr 1fr;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .dashboard {
+                padding: 1.5rem;
+            }
+
+            .status-card {
+                padding: 1.5rem;
+            }
+
+            .status-icon {
+                font-size: 3rem;
+            }
+
+            .status-text {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                gap: 1rem;
+                padding: 0.5rem;
+            }
+
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="video-section">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="output_canvas"></canvas>
+
+            <div class="video-overlay">
+                <div class="fps-counter" id="fps-counter">FPS: --</div>
+            </div>
+
+            <div class="loader" id="loader">
+                <div class="loader-icon">🎥</div>
+                <div class="loader-text">Memuat kamera...</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div id="status-card" class="status-card safe">
+                <div class="status-icon" id="status-icon">😊</div>
+                <div class="status-text" id="status-text">Anda Terjaga</div>
+
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">Rasio Mata</div>
+                        <div class="metric-value" id="ear-value">--</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Rasio Mulut</div>
+                        <div class="metric-value" id="mar-value">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <div class="controls-title">⚙️ Pengaturan</div>
+
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Sensitivitas Mata</span>
+                        <span class="control-value" id="ear-threshold-value">0.50</span>
+                    </div>
+                    <input type="range" id="ear-threshold" class="slider" min="0.15" max="0.50" step="0.01"
+                        value="0.50">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Waktu Alarm (detik)</span>
+                        <span class="control-value" id="alarm-time-value">1.5</span>
+                    </div>
+                    <input type="range" id="alarm-time" class="slider" min="0.5" max="3.0" step="0.1" value="1.5">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Sensitivitas Menguap</span>
+                        <span class="control-value" id="yawn-threshold-value">0.6</span>
+                    </div>
+                    <input type="range" id="yawn-threshold" class="slider" min="0.4" max="0.9" step="0.05" value="0.6">
+                </div>
+            </div>
+            <div class="control-group">
+                <label for="alarm-file-input" class="control-label">
+                    <span>🔊 Pilih Suara Alarm</span>
+                </label>
+                <input type="file" id="alarm-file-input" accept="audio/*"
+                    style="width: 100%; color: #94a3b8; margin-top: 0.5rem;">
+            </div>
+        </div>
+
+        <button id="audio-btn" class="audio-button">
+            🔊 Aktifkan Suara
+        </button>
+    </div>
+    </div>
+
+    <script type="module">
+        // Configuration and state management
+        class DrowsinessDetector {
+            constructor() {
+                this.config = {
+                    earThreshold: 0.50,
+                    alarmTimeSeconds: 1.5,
+                    yawnThreshold: 0.9,
+                    audioEnabled: false
+                };
+
+                this.state = {
+                    eyeClosedStartTime: null,
+                    alarmActive: false,
+                    lastFrameTime: 0,
+                    frameCount: 0,
+                    fps: 0
+                };
+
+                this.elements = this.initializeElements();
+                this.audio = this.initializeAudio();
+                this.initializeEventListeners();
+                this.initializeCamera();
+            }
+
+            initializeElements() {
+                return {
+                    statusCard: document.getElementById('status-card'),
+                    statusIcon: document.getElementById('status-icon'),
+                    statusText: document.getElementById('status-text'),
+                    earValue: document.getElementById('ear-value'),
+                    marValue: document.getElementById('mar-value'),
+                    fpsCounter: document.getElementById('fps-counter'),
+                    loader: document.getElementById('loader'),
+                    audioBtn: document.getElementById('audio-btn'),
+                    sliders: {
+                        earThreshold: document.getElementById('ear-threshold'),
+                        alarmTime: document.getElementById('alarm-time'),
+                        yawnThreshold: document.getElementById('yawn-threshold')
+                    },
+                    values: {
+                        earThreshold: document.getElementById('ear-threshold-value'),
+                        alarmTime: document.getElementById('alarm-time-value'),
+                        yawnThreshold: document.getElementById('yawn-threshold-value')
+                    }
+                };
+            }
+
+            initializeAudio() {
+                return new Tone.Player().toDestination();
+            }
+
+            initializeEventListeners() {
+                Object.entries(this.elements.sliders).forEach(([key, slider]) => {
+                    let timeout;
+                    slider.addEventListener('input', (e) => {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => {
+                            this.updateConfig(key, parseFloat(e.target.value));
+                        }, 100);
+                    });
+                });
+
+                const alarmFileInput = document.getElementById('alarm-file-input');
+                alarmFileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const url = URL.createObjectURL(file);
+                        this.audio.load(url).then(() => {
+                            console.log("Suara alarm kustom berhasil dimuat.");
+                        }).catch(err => {
+                            console.error("Gagal memuat file audio:", err);
+                        });
+                    }
+                });
+
+                this.elements.audioBtn.addEventListener('click', () => this.enableAudio());
+            }
+
+            updateConfig(key, value) {
+                const configMap = {
+                    'earThreshold': 'earThreshold',
+                    'alarmTime': 'alarmTimeSeconds',
+                    'yawnThreshold': 'yawnThreshold'
+                };
+                this.config[configMap[key]] = value;
+                const valueElement = this.elements.values[key];
+                if (valueElement) {
+                    valueElement.textContent = key === 'alarmTime' ?
+                        value.toFixed(1) : value.toFixed(2);
+                }
+            }
+
+            async enableAudio() {
+                try {
+                    if (Tone.context.state !== 'running') {
+                        await Tone.start();
+                    }
+                    if (!this.audio.loaded) {
+                        alert("Silakan pilih file audio untuk alarm terlebih dahulu.");
+                        return;
+                    }
+                    this.config.audioEnabled = true;
+                    this.elements.audioBtn.textContent = '🔊 Suara Aktif';
+                    this.elements.audioBtn.disabled = true;
+                } catch (error) {
+                    console.error('Failed to enable audio:', error);
+                }
+            }
+
+            initializeCamera() {
+                this.videoElement = document.getElementById('webcam');
+                this.canvasElement = document.getElementById('output_canvas');
+                this.canvasCtx = this.canvasElement.getContext('2d');
+
+                this.faceMesh = new window.FaceMesh({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+                });
+
+                this.faceMesh.setOptions({
+                    maxNumFaces: 1,
+                    refineLandmarks: true,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+
+                this.faceMesh.onResults((results) => this.processResults(results));
+
+                this.camera = new window.Camera(this.videoElement, {
+                    onFrame: async () => {
+                        await this.faceMesh.send({ image: this.videoElement });
+                    },
+                    width: 1280,
+                    height: 720
+                });
+
+                this.camera.start().then(() => {
+                    this.elements.loader.style.display = 'none';
+                });
+            }
+
+            calculateFPS() {
+                const now = performance.now();
+                if (this.state.lastFrameTime > 0) {
+                    const delta = now - this.state.lastFrameTime;
+                    this.state.fps = Math.round(1000 / delta);
+                    this.elements.fpsCounter.textContent = `FPS: ${this.state.fps}`;
+                }
+                this.state.lastFrameTime = now;
+                this.state.frameCount++;
+            }
+
+            euclideanDistance(p1, p2) {
+                return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+            }
+
+            calculateEAR(eyeLandmarks) {
+                const vertical1 = this.euclideanDistance(eyeLandmarks[1], eyeLandmarks[5]);
+                const vertical2 = this.euclideanDistance(eyeLandmarks[2], eyeLandmarks[4]);
+                const horizontal = this.euclideanDistance(eyeLandmarks[0], eyeLandmarks[3]);
+                return (vertical1 + vertical2) / (2.0 * horizontal);
+            }
+
+            calculateMAR(mouthLandmarks) {
+                const vertical = this.euclideanDistance(mouthLandmarks[0], mouthLandmarks[1]);
+                const horizontal = this.euclideanDistance(mouthLandmarks[2], mouthLandmarks[3]);
+                return vertical / horizontal;
+            }
+
+            triggerAlarm(reason, severity = 'danger') {
+                if (!this.state.alarmActive) {
+                    this.state.alarmActive = true;
+                    this.elements.statusCard.className = `status-card ${severity}`;
+                    this.elements.statusIcon.textContent = severity === 'danger' ? '😴' : '🥱';
+                    this.elements.statusText.textContent = reason;
+
+                    if (this.config.audioEnabled) {
+                        try {
+                            if (this.audio.loaded) {
+                                this.audio.start();
+                            }
+                        } catch (error) {
+                            console.error('Error playing alarm sound:', error);
+                        }
+                    }
+                }
+            }
+
+            // --- FUNGSI INI TELAH DIPERBAIKI ---
+            resetAlarm() {
+                if (this.state.alarmActive) {
+                    this.state.alarmActive = false;
+                    this.elements.statusCard.className = 'status-card safe';
+                    this.elements.statusIcon.textContent = '😊';
+                    this.elements.statusText.textContent = 'Anda Terjaga';
+
+                    // Menghentikan audio yang sedang diputar
+                    if (this.audio.loaded) {
+                        this.audio.stop();
+                    }
+                }
+            }
+
+            processResults(results) {
+                this.calculateFPS();
+                this.canvasCtx.save();
+                this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+                this.canvasCtx.drawImage(results.image, 0, 0, this.canvasElement.width, this.canvasElement.height);
+
+                if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    const faceLandmarks = results.multiFaceLandmarks[0];
+                    const leftEyeIndices = [33, 159, 158, 133, 145, 153];
+                    const rightEyeIndices = [362, 385, 387, 263, 373, 380];
+                    const mouthIndices = [13, 14, 61, 291];
+
+                    const leftEye = leftEyeIndices.map(i => faceLandmarks[i]);
+                    const rightEye = rightEyeIndices.map(i => faceLandmarks[i]);
+                    const mouth = mouthIndices.map(i => faceLandmarks[i]);
+
+                    let avgEAR = 0;
+                    let mar = 0;
+
+                    try {
+                        avgEAR = (this.calculateEAR(leftEye) + this.calculateEAR(rightEye)) / 2.0;
+                        mar = this.calculateMAR(mouth);
+                    } catch (error) {
+                        this.canvasCtx.restore();
+                        return;
+                    }
+
+                    this.elements.earValue.textContent = avgEAR.toFixed(3);
+                    this.elements.marValue.textContent = mar.toFixed(3);
+
+                    let isDrowsy = false;
+
+                    if (mar > this.config.yawnThreshold) {
+                        this.triggerAlarm('Terdeteksi Menguap', 'danger');
+                        isDrowsy = true;
+                    } else if (avgEAR < this.config.earThreshold) {
+                        const currentTime = Date.now();
+                        if (this.state.eyeClosedStartTime === null) {
+                            this.state.eyeClosedStartTime = currentTime;
+                        } else {
+                            const elapsedSeconds = (currentTime - this.state.eyeClosedStartTime) / 1000;
+                            if (elapsedSeconds >= this.config.alarmTimeSeconds) {
+                                this.triggerAlarm('Mata Tertutup Terlalu Lama', 'danger');
+                                isDrowsy = true;
+                            }
+                        }
+                    } else {
+                        this.state.eyeClosedStartTime = null;
+                    }
+
+                    if (!isDrowsy) {
+                        this.resetAlarm();
+                    }
+                } else {
+                    this.state.eyeClosedStartTime = null;
+                    this.resetAlarm();
+                }
+
+                this.canvasCtx.restore();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new DrowsinessDetector();
+        });
+    </script>
+</body>
+
+</html>
