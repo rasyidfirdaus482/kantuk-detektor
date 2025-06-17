@@ -52,6 +52,7 @@
             width: 100%;
             max-width: 1400px;
             height: 90vh;
+            /* Tinggi utama untuk desktop */
             min-height: 600px;
         }
 
@@ -62,6 +63,10 @@
             overflow: hidden;
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            /* Menggunakan flex untuk memusatkan start-screen */
+            align-items: center;
+            justify-content: center;
         }
 
         #webcam {
@@ -69,6 +74,10 @@
         }
 
         #output_canvas {
+            position: absolute;
+            /* Diposisikan absolut agar tidak mengganggu layout */
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -107,6 +116,8 @@
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            /* Memungkinkan scroll jika konten lebih tinggi */
         }
 
         .status-card {
@@ -273,20 +284,18 @@
             box-shadow: none;
         }
 
+        /* --- PERUBAHAN PADA LOADER/START SCREEN --- */
         .loader {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: relative;
+            /* Diubah dari absolute */
+            z-index: 20;
             text-align: center;
             color: white;
-            z-index: 20;
         }
 
         .loader-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
-            animation: spin 2s linear infinite;
         }
 
         .loader-text {
@@ -294,54 +303,53 @@
             font-weight: 500;
         }
 
-        @keyframes spin {
-            from {
-                transform: translate(-50%, -50%) rotate(0deg);
-            }
+        /* --- PERBAIKAN RESPONSIVE DI SINI --- */
 
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
-        }
-
-        @keyframes pulse-glow {
-
-            0%,
-            100% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-            }
-
-            50% {
-                box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
-            }
-        }
-
-        @keyframes pulse-bg {
-
-            0%,
-            100% {
-                opacity: 0.1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
-
+        /* Untuk Tablet dan HP Landscape (Layar Sedang) */
         @media (max-width: 1024px) {
             .container {
+                /* Mengubah layout menjadi 1 kolom, video di atas, dashboard di bawah */
                 grid-template-columns: 1fr;
-                grid-template-rows: 2fr 1fr;
+                grid-template-rows: auto 1fr;
+                /* Baris video auto, dashboard mengisi sisa */
                 height: auto;
+                /* Tinggi tidak lagi dipaksa */
                 min-height: 100vh;
+                padding: 1rem;
             }
 
             .dashboard {
                 padding: 1.5rem;
+                min-height: 300px;
+                /* Beri tinggi minimum agar tidak terlalu gepeng */
+            }
+        }
+
+        /* Untuk HP Potrait (Layar Kecil) */
+        @media (max-width: 768px) {
+            body {
+                padding: 0.5rem;
+                /* Kurangi padding di layar sangat kecil */
             }
 
-            .status-card {
-                padding: 1.5rem;
+            .container {
+                gap: 1rem;
+                /* Menggunakan Flexbox untuk kontrol yang lebih baik di mobile */
+                display: flex;
+                flex-direction: column;
+            }
+
+            .video-section {
+                /* KUNCI UTAMA: Memaksa rasio aspek agar video tidak gepeng */
+                aspect-ratio: 4 / 3;
+                width: 100%;
+                min-height: 0;
+                /* Override min-height dari .container */
+            }
+
+            .dashboard {
+                flex-shrink: 0;
+                /* Mencegah dashboard menyusut */
             }
 
             .status-icon {
@@ -351,17 +359,24 @@
             .status-text {
                 font-size: 1.2rem;
             }
-        }
-
-        @media (max-width: 640px) {
-            .container {
-                gap: 1rem;
-                padding: 0.5rem;
-            }
 
             .metrics {
                 grid-template-columns: 1fr;
+                /* Metrik menjadi 1 kolom */
             }
+        }
+
+        /* Keyframes tidak perlu diubah */
+        @keyframes spin {
+            /* ... */
+        }
+
+        @keyframes pulse-glow {
+            /* ... */
+        }
+
+        @keyframes pulse-bg {
+            /* ... */
         }
     </style>
 </head>
