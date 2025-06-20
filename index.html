@@ -548,14 +548,17 @@
             }
 
             initializeCamera() {
-                // --- SOLUSI: Tentukan resolusi kamera berdasarkan lebar layar ---
-                const isMobile = window.innerWidth <= 768; // Deteksi perangkat mobile
-                const cameraConfig = {
-                    width: isMobile ? 640 : 1280, // Resolusi 640p untuk mobile, 1280p untuk desktop
-                    height: isMobile ? 480 : 720  // Resolusi 480p untuk mobile, 720p untuk desktop
-                };
+                // Tentukan resolusi kamera yang paling umum didukung untuk perangkat.
+                // 1280x720 (720p) adalah standar umum untuk desktop dan banyak mobile.
+                // 640x480 (VGA) adalah opsi yang lebih rendah untuk performa atau kompatibilitas yang lebih luas di mobile.
+                const cameraWidth = 1280;
+                const cameraHeight = 720;
 
-                console.log(`Mode Mobile: ${isMobile}. Menggunakan resolusi kamera: ${cameraConfig.width}x${cameraConfig.height}`);
+                // Perhatikan: Menggunakan 'facingMode: "user"' akan mengaktifkan kamera depan.
+                // Jika ingin kamera belakang (misal untuk HP), gunakan 'facingMode: "environment"'.
+                // Namun, untuk deteksi wajah, kamera depan lebih umum.
+
+                console.log(`Menggunakan resolusi kamera: ${cameraWidth}x${cameraHeight}`);
 
                 this.videoElement = document.getElementById('webcam');
                 this.canvasElement = document.getElementById('output_canvas');
@@ -574,15 +577,26 @@
 
                 this.faceMesh.onResults((results) => this.processResults(results));
 
+                // Instansiasi Camera dengan resolusi yang diminta
                 this.camera = new window.Camera(this.videoElement, {
                     onFrame: async () => {
                         await this.faceMesh.send({ image: this.videoElement });
                     },
-                    width: cameraConfig.width, // Gunakan resolusi lebar dari config
-                    height: cameraConfig.height // Gunakan resolusi tinggi dari config
+                    width: cameraWidth,
+                    height: cameraHeight
                 });
 
                 this.camera.start();
+
+                // Opsional: Pastikan ukuran canvas sesuai dengan video stream setelah dimulai
+                // Ini penting jika kamera tidak bisa menyediakan resolusi yang tepat
+                this.videoElement.addEventListener('loadeddata', () => {
+                    if (this.videoElement.videoWidth && this.videoElement.videoHeight) {
+                        this.canvasElement.width = this.videoElement.videoWidth;
+                        this.canvasElement.height = this.videoElement.videoHeight;
+                        console.log(`Ukuran video stream aktual: ${this.videoElement.videoWidth}x${this.videoElement.videoHeight}`);
+                    }
+                });
             }
 
             calculateFPS() {
