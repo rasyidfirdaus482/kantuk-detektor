@@ -65,6 +65,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            aspect-ratio: 4 / 3;
+            /* Tambahkan ini untuk rasio aspek 4:3 */
+            min-height: 0;
+            /* Pastikan tinggi minimum direset */
         }
 
         #webcam {
@@ -545,13 +549,12 @@
 
             initializeCamera() {
                 // --- SOLUSI: Tentukan resolusi kamera berdasarkan lebar layar ---
-                const isMobile = window.innerWidth <= 768;
+                const isMobile = window.innerWidth <= 768; // Deteksi perangkat mobile
                 const cameraConfig = {
-                    width: isMobile ? 640 : 1280,  // Gunakan 640px jika mobile
-                    height: isMobile ? 480 : 720   // Gunakan 480px jika mobile
+                    width: isMobile ? 640 : 1280, // Resolusi 640p untuk mobile, 1280p untuk desktop
+                    height: isMobile ? 480 : 720  // Resolusi 480p untuk mobile, 720p untuk desktop
                 };
 
-                // Pesan ini akan muncul di konsol (F12) untuk memastikan resolusi yang benar digunakan
                 console.log(`Mode Mobile: ${isMobile}. Menggunakan resolusi kamera: ${cameraConfig.width}x${cameraConfig.height}`);
 
                 this.videoElement = document.getElementById('webcam');
@@ -575,9 +578,8 @@
                     onFrame: async () => {
                         await this.faceMesh.send({ image: this.videoElement });
                     },
-                    // --- Gunakan config resolusi dinamis yang sudah kita tentukan ---
-                    width: cameraConfig.width,
-                    height: cameraConfig.height
+                    width: cameraConfig.width, // Gunakan resolusi lebar dari config
+                    height: cameraConfig.height // Gunakan resolusi tinggi dari config
                 });
 
                 this.camera.start();
